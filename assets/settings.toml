@@ -1,0 +1,12 @@
+# Readme Shogi Settings
+
+# Repository information (used for generating links)
+[repository]
+owner = "readme-shogi"
+repo = ".github"
+readme_path = "profile/"
+
+# Game settings
+[game]
+# Maximum moves before game is declared a draw
+max_moves = 500

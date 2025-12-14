@@ -1,0 +1,86 @@
+name: New Shogi Game
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: shogi-game
+  cancel-in-progress: false
+
+jobs:
+  new-game:
+    runs-on: ubuntu-latest
+    # Run on manual dispatch or issues starting with 'shogi|new'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.issue.title, 'shogi|new')
+    
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+      
+      - name: Set Poetry environment
+        run: poetry env use '${{ steps.python.outputs.python-path }}'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Create new game
+        run: |
+          poetry run readme-shogi new
+          poetry run readme-shogi render --output .
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "readme-shogi: new game started by @${{ github.event.issue.user.login || github.actor }}"
+          git push
+
+      - name: Close issue with success comment
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue_number = context.issue.number;
+            const author = context.payload.issue.user.login;
+            await github.rest.reactions.createForIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              content: 'hooray'
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: `✅ New game has been started!\n\nThank you, @${author}! Check the [README](https://github.com/${context.repo.owner}/${context.repo.repo}#readme) to see the board and make the first move.`
+            });
+            
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              state: 'closed',
+              labels: ['shogi-new', 'shogi']
+            });

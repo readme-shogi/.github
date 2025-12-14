@@ -1,0 +1,42 @@
+name: CI Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+      
+      - name: Set Poetry environment
+        run: poetry env use '${{ steps.python.outputs.python-path }}'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run checks (lint/format/type) via Poe
+        run: poetry run poe check
+
+      - name: Build package
+        run: poetry build

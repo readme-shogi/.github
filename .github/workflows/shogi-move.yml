@@ -1,0 +1,134 @@
+name: Shogi Move
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: shogi-game
+  cancel-in-progress: false
+
+jobs:
+  process-move:
+    runs-on: ubuntu-latest
+    # Only run on issues with shogi move format
+    if: startsWith(github.event.issue.title, 'shogi|move|')
+    
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+      
+      - name: Set Poetry environment
+        run: poetry env use '${{ steps.python.outputs.python-path }}'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Validate issue title format
+        id: validate
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          # Validate format: shogi|move|<game_id>|<move>
+          if [[ ! "$TITLE" =~ ^shogi\|move\|[a-f0-9]{8}\|([1-9][a-i][1-9][a-i]\+?|[PLNSGBRK]\*[1-9][a-i])$ ]]; then
+            echo "Invalid issue title format"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "valid=true" >> $GITHUB_OUTPUT
+
+      - name: Process move
+        if: steps.validate.outputs.valid == 'true'
+        id: move
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          poetry run readme-shogi move \
+            --issue-title "$ISSUE_TITLE" \
+            --player "$ISSUE_AUTHOR"
+          poetry run readme-shogi render --output .
+
+      - name: Commit and push changes
+        if: steps.validate.outputs.valid == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "readme-shogi: move ${{ github.event.issue.title }} by @${{ github.event.issue.user.login }}"
+          git push
+
+      - name: Close issue with success comment
+        if: steps.validate.outputs.valid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue_number = context.issue.number;
+            const author = context.payload.issue.user.login;
+            const title = context.payload.issue.title;
+            const parts = title.split('|');
+            const move = parts[3] || 'unknown';
+            await github.rest.reactions.createForIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              content: 'hooray'
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: `✅ Move **${move}** has been processed successfully!\n\nThank you for playing, @${author}! Check the [README](https://github.com/${context.repo.owner}/${context.repo.repo}#readme) to see the updated board.`
+            });
+            
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              state: 'closed',
+              labels: ['shogi-move', 'shogi']
+            });
+
+      - name: Close issue with error comment
+        if: steps.validate.outputs.valid == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue_number = context.issue.number;
+            await github.rest.reactions.createForIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              content: 'confused'
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: `❌ Invalid move format.\n\nPlease use the move links from the README to make a valid move.`
+            });
+            
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              state: 'closed',
+              labels: ['shogi-move', 'shogi', 'invalid']
+            });

@@ -1,0 +1,10 @@
+{
+  "total_games": 0,
+  "total_moves": 0,
+  "black_wins": 0,
+  "white_wins": 0,
+  "draws": 0,
+  "top_players": {},
+  "recent_games": [],
+  "recent_moves": []
+}

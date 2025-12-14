@@ -1,0 +1,72 @@
+[project]
+name = "readme-shogi"
+version = "0.0.0"
+description = "Play Shogi in your GitHub Profile README."
+authors = [
+    {name = "zyf722", email = "MaxMixAlex@protonmail.com"}
+]
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "cshogi (>=0.9.7,<0.10.0)",
+    "click (>=8.3.1,<9.0.0)",
+    "rich (>=14.2.0,<15.0.0)",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "i18nice (>=0.16.0,<0.17.0)",
+]
+
+[project.scripts]
+"readme-shogi" = "readme_shogi.cli:cli"
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.14.8,<0.15.0)",
+    "mypy (>=1.19.0,<2.0.0)",
+    "poethepoet (>=0.38.0,<0.39.0)"
+]
+
+[tool.poetry]
+packages = [{include = "readme_shogi", from = "src"}]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[tool.ruff]
+output-format = "grouped"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",
+    "UP",
+    "A",
+    "N",
+    "SIM",
+    "RET",
+    "PTH",
+    "C4",
+    "B",
+    "RUF",
+    "FAST",
+]
+ignore = ["B008", "E501", "UP045", "UP046", "SIM117", "RET504", "RUF001"]
+
+[tool.poe.tasks]
+lint-check = "ruff check ."
+format-check = "ruff format --check ."
+type-check = "mypy ."
+check.sequence = [
+    "lint-check",
+    "format-check",
+    "type-check"
+]
+check.ignore_fail = "return_non_zero"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
