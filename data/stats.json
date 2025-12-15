@@ -1,10 +1,23 @@
 {
   "total_games": 0,
-  "total_moves": 0,
+  "total_moves": 1,
   "black_wins": 0,
   "white_wins": 0,
   "draws": 0,
-  "top_players": {},
+  "top_players": {
+    "zyf722": {
+      "moves": 1,
+      "wins": 0
+    }
+  },
   "recent_games": [],
-  "recent_moves": []
+  "recent_moves": [
+    {
+      "game_id": "7e8ca920",
+      "player": "zyf722",
+      "move": "7g7f",
+      "turn": "black",
+      "timestamp": "2025-12-14T17:11:02.783443"
+    }
+  ]
 }
